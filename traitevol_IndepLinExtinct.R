@@ -1,15 +1,9 @@
 
 require(phangorn)
 
-# e is a pre-defined value to add noise to the value of mutation rate (e1) or  diversification rate (e2). If v is too large there will be a weak signal of the relationship in the simulation. If e is 0 the relationship will be equivalent to a direct relationship between the diversification rate and the rate of molecular evolution.
+# The following function simulates phylogenetic structures (not yet of class phylo) according to the relationsips between a trait and diversification rate and the same trait and the probability of a substitution occurring.
 
-# The following are the values of K, the regression coefficients in the relationship between the trait and the rate of molecular evolution (b1) and the trait and the rate of speciation (b2).
-
-# This function receives initial values and returns a tree. The speciation rate and mutation rate depend on a trait.
-
-# The following function simulates phylogenies according to the relationsips between a trait and diversification rate and the same trait and the probability of a substitution occurring. The resulting phylogeny will have a number of branches slightly higher than branchstop because an iteration may produce extra branches before detecting that the number is above branchstop. Note that the function simtr2seq is required to make the results of this function into phylogenies. 
-
-# Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are e1 and e2 respectively, read about them above.
+# Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
 tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01){
