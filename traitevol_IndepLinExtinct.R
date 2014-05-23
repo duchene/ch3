@@ -12,7 +12,7 @@ require(phangorn)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are e1 and e2 respectively, read about them above.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 0, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.05, Pext = 0.01, Dsd = 2, molerror = 0.1, sprerror = 0.1){
+tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, the branch length in substitutions, and the trait value.
 
@@ -50,13 +50,13 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 		    		
 		    		e2 <- rnorm(1, 0, sprerror)
 
-					FUNspr <- function(x) abs(0.9 * (1 - exp(-b2 * x)) + 0.02 + e2)
+					FUNspr <- function(x) abs(0.3 * (1 - exp(-b2 * x)) + 0.02 + e2)
 
-					FUNmu <- function(x) abs(0.001 * (1 - exp(-b1 * x)) + 0.001 + e1)
+					FUNmu <- function(x) abs(0.02 * (1 - exp(-b1 * x)) + 0.001 + e1)
 					
-					# The following makes sure that trait values do not become lower than roughly 1.
+					# The following makes sure that trait values do not become lower than roughly 2.
 					
-					if(edgetable[i, 5] < 1) edgetable[i, 5] <- 1 + rnorm(1, 0, sqrt(2 * D * dt))
+					if(edgetable[i, 5] < 2) edgetable[i, 5] <- 2 + rnorm(1, 0, sqrt(2 * D * dt))
 
 		    		spr.new <- FUNspr(edgetable[i, 5])
 		    		
@@ -132,11 +132,13 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 	rownames(edgetable) <- NULL
 
-        colnames(edgetable) <- NULL
+    colnames(edgetable) <- NULL
+    
+    edgetable[, 4] <- sapply(edgetable[, 4], function(x) if(x == 0){ x <- 0.0001 } else { x <- x })
+    
+    print(time)
 
-	return(edgetable)
-	
-	
+	return(edgetable)	
 
 }
 
