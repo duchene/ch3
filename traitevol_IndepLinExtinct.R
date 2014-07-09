@@ -1,27 +1,32 @@
 
 require(phangorn)
 require(MASS)
+require(Matrix)
 
 # The following function simulates phylogenetic structures (not yet of class phylo) according to the relationsips between a trait and diversification rate and the same trait and the probability of a substitution occurring.
 
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.009, meanspr = 0.2, q = c(1, 1, 1, 1, 1, 1)){
+tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.009, meanspr = 0.2, q = matrix(rep(1, 16), 4, 4)){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
 	if(direct == F){
 
-		edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 5)
+		edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4)
 
 	} else {
 
-		edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 6)
+		edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5)
 
 	}
 
     substitutions <- list(matrix(c(0,0,0), 1, 3))
+    
+    subsPmat <- as.matrix(expm(q * stepsize)); colnames(subsPmat) <- c("A", "C", "T", "G"); rownames(subsPmat) <- c("A", "C", "T", "G");
+    
+    sequence <- sample(c("A", "C", "T", "G"), seqlen, replace = T)
 
 	extinct <- 1
 
@@ -44,15 +49,15 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 
         	# The following restarts the simulation if the age of the tree exceeding 100.
         	time <- time + dt
-        	if(time > 501){ time <- 1; extinct <- 1;
+        	if(time > 501){ time <- 1; extinct <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3));
 
         		if(direct == F){
 
-        			edgetable <- matrix(data = c(0, 1, 0, 0, traitstart), nrow = 1, ncol = 5); print("A phylogeny grew too old!")
+        			edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4); print("A phylogeny grew too old!")
 
         		} else {
 
-        			edgetable <- matrix(data = c(0, 1, 0, 0, meanmu, meanspr), nrow = 1, ncol = 6); print("A phylogeny grew too old")
+        			edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5); print("A phylogeny grew too old")
 
         		}
 
@@ -86,31 +91,31 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 
 						# The following makes sure that trait values do not become lower than roughly 2.
 
-						if(edgetable[i, 5] < 2) edgetable[i, 5] <- 2 + rnorm(1, 0, sqrt(2 * D * dt))
+						if(edgetable[i, 4] < 2) edgetable[i, 4] <- 2 + rnorm(1, 0, sqrt(2 * D * dt))
 
-		    			spr.new <- FUNspr(edgetable[i, 5])
+		    			spr.new <- FUNspr(edgetable[i, 4])
 
-		    			mu.new <- FUNmu(edgetable[i, 5]) * seqlen
+		    			mu.new <- FUNmu(edgetable[i, 4])
 
 		    		} else {
 
-		    			if(edgetable[i, 5] < 0.001) edgetable[i, 5] <- 0.001 + rnorm(1, 0, 0.0001)
+		    			if(edgetable[i, 4] < 0.001) edgetable[i, 4] <- 0.001 + rnorm(1, 0, 0.0001)
 
-		    			if(edgetable[i, 6] < 0.01) edgetable[i, 6] <- 0.01 + rnorm(1, 0, 0.001)
+		    			if(edgetable[i, 5] < 0.01) edgetable[i, 5] <- 0.01 + rnorm(1, 0, 0.001)
 
-		    			rand <- mvrnorm(1, c(edgetable[i, 5], edgetable[i, 6]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
+		    			rand <- mvrnorm(1, c(edgetable[i, 4], edgetable[i, 5]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
 
-		    			while(any(rand < 0)) rand <- mvrnorm(1, c(edgetable[i, 5], edgetable[i, 6]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
+		    			while(any(rand < 0)) rand <- mvrnorm(1, c(edgetable[i, 4], edgetable[i, 5]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
 
 		    			spr.new <- rand[2]
 
-		    			mu.new <- rand[1] * seqlen
+		    			mu.new <- rand[1]
 
 		    		}
 
 		    		# The following is the total probability of an event occurring, which includes twice the equation for the rate of an event occurring.
 
-		    		totalP <- ((spr.new + mu.new + Pext) * dt) * exp(-((spr.new + mu.new + Pext) * dt))
+		    		totalP <- ((spr.new + (mu.new * seqlen) + Pext) * dt) * exp(-((spr.new + (mu.new * seqlen) + Pext) * dt))
 
 						# The following condition determines whether and event occurs.
 
@@ -130,11 +135,11 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 
 								if(direct == F){
 
-									edgetable <- matrix(data = c(0, 1, 0, 0, traitstart), nrow = 1, ncol = 5); extinct <- 1 ; time <- 1; print("A total extinction happened!")
+									edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); print("A total extinction happened!")
 
 								} else {
 
-									edgetable <- matrix(data = c(0, 1, 0, 0, meanmu, meanspr), nrow = 1, ncol = 6); extinct <- 1 ; time <- 1; print("A total extinction happened!")
+									edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); print("A total extinction happened!")
 
 								}
 
@@ -146,13 +151,30 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 
 						}
 						
-						subsevent <- rbinom(1, 1, (mu.new / (1 - Pext)))
+						subsevent <- rbinom(seqlen, 1, (mu.new / (1 - Pext)))
 						
-						if(subsevent == 1){
+						if(sum(subsevent) >= 1){
 							#print("substitution!")
 
-							# A substitution event occurs:
-							substitution[[i]] <- rbind(c(sample(1:seqlen, 1), , ))
+							# A substitution event occurs. To do this, we bind a row to the substitutions matrix; the columns of this matrix are a site, an initial base, and an end base. If a substitution has already been done in a site, the end base is replaced according to the most recent base.
+							
+							substsite <- which(subsevent == 1)
+							
+							for(j in substsite){
+							
+								if(j %in% substitutions[[i]][, 1]){
+								
+									substitutions[[i]][which(substitutions[[i]][, 1] == j), 2] <- substitutions[[i]][which(substitutions[[i]][, 1] == j), 3]
+								
+									substitutions[[i]][which(substitutions[[i]][, 1] == j), 3] <- rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, substitutions[[i]][which(substitutions[[i]][, 1] == j), 2]]) == 1)]
+							
+								} else {
+							
+									substitutions[[i]] <- rbind(substitutions[[i]], c(j, sequence[j], rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, sequence[j]]) == 1)]))
+							
+								}
+							
+							}
 
 							# Finally we add the time period:
 							edgetable[i, 3] <- edgetable[i, 3] + dt
@@ -160,15 +182,15 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 							# And the trait or mu and spr must evolve:
 							if(direct == F){
 
-								edgetable[i, 5] <- rt + edgetable[i, 5] + rnorm(1, 0, sqrt(2 * D * dt))
+								edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))
 
 							} else {
 
 								propevol <- rnorm(1, 1, 0.05)
 
-								edgetable[i, 5] <- edgetable[i, 5] * propevol
+								edgetable[i, 4] <- edgetable[i, 4] * propevol
 
-								edgetable[i, 6] <- edgetable[i, 6] * propevol
+								edgetable[i, 5] <- edgetable[i, 5] * propevol
 
 							}
 
@@ -179,21 +201,21 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 						if(specevent == 1){
 							#print("speciation!")
 
-							# A speciation event occurs and a time step is added:
+							# A speciation event occurs and a time step is NOT added:
 
 							if(direct == F){
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, 0, (rt + edgetable[i, 5] + rnorm(1, 0, sqrt(2 * D * dt))))
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), 0, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, 0, (rt + edgetable[i, 5] + rnorm(1, 0, sqrt(2 * D * dt))))
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), 0, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
 
 						   	} else {
 
 						   		propevol <- rnorm(1, 1, 0.05)
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, 0, edgetable[i, 5] * propevol, edgetable[i, 6] * propevol)
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), 0, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, 0, edgetable[i, 5] * propevol, edgetable[i, 6] * propevol)
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), 0, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
 
 						   	}
 
@@ -215,15 +237,15 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 						# And the trait or mu and spr must evolve:
 						if(direct == F){
 
-							edgetable[i, 5] <- rt + edgetable[i, 5] + rnorm(1, 0, sqrt(2 * D * dt))
+							edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))
 
 						} else {
 
 							propevol <- rnorm(1, 1, 0.05)
 
-							edgetable[i, 5] <- edgetable[i, 5] * propevol
+							edgetable[i, 4] <- edgetable[i, 4] * propevol
 
-							edgetable[i, 6] <- edgetable[i, 6] * propevol
+							edgetable[i, 5] <- edgetable[i, 5] * propevol
 
 						}
 
@@ -240,8 +262,6 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 	rownames(edgetable) <- NULL
 
     colnames(edgetable) <- NULL
-
-    edgetable[, 4] <- sapply(edgetable[, 4], function(x) if(x == 0){ x <- 0.0001 } else { x <- x })
 
     print(time)
 
