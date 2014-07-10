@@ -31,6 +31,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 	extinct <- 1
 
 	time <- 1
+	
+	tips <- 1
 
 	b1 <- regcoefmu
 
@@ -40,7 +42,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 	spvar <- sprerror^2
 
-	 while(length((1:nrow(edgetable))[if(length(extinct) > 1){ -extinct } else { 1:nrow(edgetable) }]) < branchstop){
+	 while(((tips - length(extinct)) * 2) < branchstop){
 
 	 	    # Here we are setting constant time step size. Otherwise, use rexp().
 
@@ -49,7 +51,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
         	# The following restarts the simulation if the age of the tree exceeds 500.
         	time <- time + dt
-        	if(time > 501){ time <- 1; extinct <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3));
+        	if(time > 501){ time <- 1; extinct <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1;
 
         		if(direct == F){
 
@@ -62,7 +64,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
         		}
 
         	}
-
+        	
+        	tips <- length(edgetable[, 2][which(!edgetable[, 2] %in% edgetable[, 1])])
 
 		    # If interested on the rate of evolution of the trait, we should set D differently, perhaps with dexp().
 
@@ -135,11 +138,11 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 								if(direct == F){
 
-									edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); print("A total extinction happened!")
+									edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1; print("A total extinction happened!")
 
 								} else {
 
-									edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); print("A total extinction happened!")
+									edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1; print("A total extinction happened!")
 
 								}
 
