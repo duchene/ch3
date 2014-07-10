@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.009, meanspr = 0.2, q = matrix(rep(1, 16), 4, 4)){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.05, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.009, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -24,9 +24,9 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 
     substitutions <- list(matrix(c(0,0,0), 1, 3))
     
-    subsPmat <- as.matrix(expm(q * stepsize)); colnames(subsPmat) <- c("A", "C", "T", "G"); rownames(subsPmat) <- c("A", "C", "T", "G");
+    subsPmat <- as.matrix(expm(q * stepsize)); colnames(subsPmat) <- c("a", "c", "t", "g"); rownames(subsPmat) <- c("a", "c", "t", "g");
     
-    sequence <- sample(c("A", "C", "T", "G"), seqlen, replace = T)
+    sequence <- sample(c("a", "c", "t", "g"), seqlen, replace = T)
 
 	extinct <- 1
 
@@ -47,7 +47,7 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 		    dt <- stepsize
         	rt <- trait.r * dt
 
-        	# The following restarts the simulation if the age of the tree exceeding 100.
+        	# The following restarts the simulation if the age of the tree exceeds 500.
         	time <- time + dt
         	if(time > 501){ time <- 1; extinct <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3));
 
@@ -76,12 +76,12 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
 
 					e2 <- rnorm(1, 0, sprerror)
 
-					FUNspr <- function(x) abs(0.3 * (1 - exp(-b2 * x)) + 0.02 + e2)
+					FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + 0.01 + e2)
 
 					FUNmu <- function(x) abs(0.02 * (1 - exp(-b1 * x)) + 0.001 + e1)
 
 					if(b2 == 0){
-						FUNspr <- function(x) abs(0.3 * (1 - exp(-b2 * x)) + meanspr + e2)
+						FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + meanspr + e2)
 					}
 					if(b1 == 0){
 						FUNmu <- function(x) abs(0.02 * (1 - exp(-b1 * x)) + meanmu + e1)
@@ -264,34 +264,34 @@ tr.mu.sp <- function(stepsize = 0.01, branchstop = 200, seqlen = 2000, traitstar
     colnames(edgetable) <- NULL
 
     print(time)
+    print(c(extantnodesandtips = length((1:nrow(edgetable))[-extinct]), allnodesandtips = length(1:nrow(edgetable))))
 
-	return(edgetable)
+	### The following section takes the object edgetable and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
 
-}
-
-
-### The following function takes the object created by tr.mu.sp and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
-
-
-simtr2seq <- function(simtrtable, q = rep(1, 6), seqlen = 2000, age = 50){
+	simtrtable <- edgetable
 
     # Chop off the root:
     simtrtable2 <- simtrtable[2:length(simtrtable[,1]), ]
+    substitutions2 <- lapply(substitutions, function(x) x <- x[2:nrow(x),])
+    substitutions2 <- substitutions2[2:length(substitutions)]
 
     # Find the number of tips:
     tips <- length(simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])])
+    print(c(alltips = tips, extinctions = length(extinct)))
 
     # Fix the order so the smallest number is the root:
     fixmat <- rbind(c(0:max(simtrtable2[,2])), c(max(simtrtable2[,2]):0))
     for(i in 1:length(simtrtable2[,1])){
-	initval <- simtrtable2[i, 1]
-	simtrtable2[i, 1] <- fixmat[2,][which(fixmat[1,] == initval)]
-	initval <- simtrtable2[i, 2]
-	simtrtable2[i, 2] <- fixmat[2,][which(fixmat[1,] == initval)]
+		initval <- simtrtable2[i, 1]
+		simtrtable2[i, 1] <- fixmat[2,][which(fixmat[1,] == initval)]
+		initval <- simtrtable2[i, 2]
+		simtrtable2[i, 2] <- fixmat[2,][which(fixmat[1,] == initval)]
     }
 
-    # Order the branches so the edge object is "postorder":
+    # Order the branches so the edge object and substitutions are "postorder":
     simtrtabord <- simtrtable2[order(simtrtable2[,1], decreasing = T), ]
+    subsord <- substitutions2[order(simtrtable2[,1], decreasing = T)]
+    
     # Add one to all values to avoid having a zero:
     simtrtabord[, 1] <- simtrtabord[, 1] + 1
 
@@ -305,15 +305,17 @@ simtr2seq <- function(simtrtable, q = rep(1, 6), seqlen = 2000, age = 50){
     wrongbrs <- unique(simtrtabord[, 1][which(simtrtabord[, 1] <= tips)])
 
     for(i in 1:length(currtips)){
-	wrongparloc <- which(simtrtabord[, 1] == wrongbrs[i])
-	wrongdauloc <- which(simtrtabord[, 2] == currtips[i])
-	simtrtabord[, 1][wrongparloc] <- currtips[i]
-	simtrtabord[, 2][which(simtrtabord[, 2] == wrongbrs[i])] <- currtips[i]
-	simtrtabord[, 2][wrongdauloc] <- wrongbrs[i]
+		wrongparloc <- which(simtrtabord[, 1] == wrongbrs[i])
+		wrongdauloc <- which(simtrtabord[, 2] == currtips[i])
+		simtrtabord[, 1][wrongparloc] <- currtips[i]
+		simtrtabord[, 2][which(simtrtabord[, 2] == wrongbrs[i])] <- currtips[i]
+		simtrtabord[, 2][wrongdauloc] <- wrongbrs[i]
     }
 
-    # Order the branches so the edge object is "postorder" again:
+    # Order the branches so the edge and substitutions objects are "postorder" again:
     simtrtabord <- simtrtabord[order(simtrtabord[, 1], decreasing = T), ]
+    subsord <- subsord[order(simtrtabord[, 1], decreasing = T)]
+    names(subsord) <- simtrtabord[, 2]
 
     # Extract the edge object and each branch length vector from the table:
     simtredge <- simtrtabord[, 1:2]
@@ -327,16 +329,10 @@ simtr2seq <- function(simtrtable, q = rep(1, 6), seqlen = 2000, age = 50){
     timephylo$edge <- simtredge
 
     timephylo$edge.length <- simtrtabord[, 3]
-
-    subsphylo <- timephylo
-
-    subsphylo$edge.length <- simtrtabord[, 4] / (10 * max(simtrtabord[, 4]))
-
-    subsphylo$edge.length[which(subsphylo$edge == 0)] <- 1 / seqlen
+    
+    timephylo$tip.label <- 1:tips
 
     timephylo <- read.tree(text = write.tree(timephylo))
-
-    subsphylo <- read.tree(text = write.tree(subsphylo))
 
     # Now we modify the age of the phylogeny to be the one given by the argument age.
 
@@ -355,25 +351,30 @@ simtr2seq <- function(simtrtable, q = rep(1, 6), seqlen = 2000, age = 50){
 		addedval <- abs(min(branching.times(timephylo))) + extantedgelen
 		for(i in 1:length(timephylo$edge.length)){
 			brlen[i] <- (age / (max(branching.times(timephylo)) + addedval)) * timephylo$edge.length[i]
-			}
+		}
 		timephylo$edge.length <- brlen
 
 	}
 
-    # Finally the function returns a list with the following objects: The complete chronogram, the complete phylogram, the extant chronogram, the extant phylogram, and the DNA sequence alignment.
-
     timephylcut <- drop.fossil(timephylo)
+    
+    # Now we create the alignment from the substitutions at the tips:
+    
+    alignment <- matrix(rep(sequence, tips), nrow = tips, ncol = seqlen, byrow = T)
+    rownames(alignment) <- 1:tips
+    
+    for(i in 1:tips){
+    	for(j in 1:nrow(subsord[[as.character(i)]])){
+    		alignment[i, as.numeric(subsord[[as.character(i)]][j, 1])] <- subsord[[as.character(i)]][j, 3]
+    	}
+    }
+    
+    alignment <- as.DNAbin(alignment)
+    
+    # Finally the function returns a list with the following objects: The complete chronogram, the extant chronogram, and the DNA sequence alignment.
 
-    subsphylcut <- drop.tip(subsphylo, setdiff(subsphylo$tip.label, timephylcut$tip.label))
-
-    DNAalignment <- as.DNAbin(simSeq(subsphylcut, l = seqlen, Q = q, ancestral = F))
-
-    return(list(timephyloFULL = timephylo, subsphyloFULL = subsphylo, timephylo = timephylcut, subsphylo = subsphylcut, alignment = DNAalignment))
+    return(list(timephyloFULL = timephylo, timephylo = timephylcut, alignment = alignment))
 
 
 }
-
-
-
-
 
