@@ -24,9 +24,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     substitutions <- list(matrix(c(0,0,0), 1, 3))
     
-    subsPmat <- as.matrix(expm(q * stepsize)); colnames(subsPmat) <- c("a", "c", "t", "g"); rownames(subsPmat) <- c("a", "c", "t", "g");
+    subsPmat <- as.matrix(expm(q * stepsize)); colnames(subsPmat) <- c("a", "c", "g", "t"); rownames(subsPmat) <- c("a", "c", "g", "t");
     
-    sequence <- sample(c("a", "c", "t", "g"), seqlen, replace = T)
+    sequence <- sample(c("a", "c", "g", "t"), seqlen, replace = T)
 
 	extinct <- 1
 
@@ -267,7 +267,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     colnames(edgetable) <- NULL
 
     print(time)
-    print(c(extantnodesandtips = length((1:nrow(edgetable))[-extinct]), allnodesandtips = length(1:nrow(edgetable))))
+    #print(c(extantnodesandtips = length((1:nrow(edgetable))[-extinct]), allnodesandtips = length(1:nrow(edgetable))))
 
 	### The following section takes the object edgetable and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
 
@@ -277,10 +277,22 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     simtrtable2 <- simtrtable[2:length(simtrtable[,1]), ]
     substitutions2 <- lapply(substitutions, function(x) x <- x[2:nrow(x),])
     substitutions2 <- substitutions2[2:length(substitutions)]
+    allsubs <- substitutions2
+    
+    # Remove all non-extant subsitution data:
+    
+    for(i in 1:length(substitutions2)){
+    	#if(i %in% extinct){
+    	#	substitutions2[[i]] <- NA
+    	#}
+    	#if(simtrtable2[i, 2] %in% simtrtable2[, 1]){
+    	#	substitutions2[[i]] <- NA
+    	#}
+    }
 
     # Find the number of tips:
     tips <- length(simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])])
-    print(c(alltips = tips, extinctions = length(extinct)))
+    #print(c(alltips = tips, extinctions = length(extinct)))
 
     # Fix the order so the smallest number is the root:
     fixmat <- rbind(c(0:max(simtrtable2[,2])), c(max(simtrtable2[,2]):0))
@@ -362,21 +374,23 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     timephylcut <- drop.fossil(timephylo)
     
     # Now we create the alignment from the substitutions at the tips:
+    print(class(subsord));print(dim(subsord[[1]]))
+    alignment <- matrix(sequence, nrow = 1, ncol = seqlen, byrow = T)
     
-    alignment <- matrix(rep(sequence, tips), nrow = tips, ncol = seqlen, byrow = T)
-    rownames(alignment) <- 1:tips
-    
-    for(i in 1:tips){
-    	for(j in 1:nrow(subsord[[as.character(i)]])){
-    		alignment[i, as.numeric(subsord[[as.character(i)]][j, 1])] <- subsord[[as.character(i)]][j, 3]
+    for(i in 1:length(subsord)){
+    	if(is.na(subsord[i]) == F){
+    		alignment <- rbind(alignment, sequence)
+    		for(j in 1:nrow(subsord[[i]])){
+    			alignment[nrow(alignment), as.numeric(subsord[[i]][j, 1])] <- subsord[[i]][j, 3]
+    		}
     	}
     }
-    
-    alignment <- as.DNAbin(alignment)
+    print(dim(alignment))
+    alignment <- as.DNAbin(alignment[2:nrow(alignment),])
     
     # Finally the function returns a list with the following objects: The complete chronogram, the extant chronogram, and the DNA sequence alignment.
 
-    return(list(timephyloFULL = timephylo, timephylo = timephylcut, alignment = alignment))
+    return(list(timephyloFULL = timephylo, timephylo = timephylcut, alignment = alignment, allsubs = allsubs, subsord = subsord))
 
 
 }
