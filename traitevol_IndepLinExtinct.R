@@ -266,33 +266,39 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     colnames(edgetable) <- NULL
 
-    print(time)
+    #print(time)
     #print(c(extantnodesandtips = length((1:nrow(edgetable))[-extinct]), allnodesandtips = length(1:nrow(edgetable))))
-
+    #print(c(alltips = tips, extinctions = length(extinct)))
+        
 	### The following section takes the object edgetable and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
+
+    # Remove all non-extant subsitutions data:
+    
+    allsubs <- substitutions
+    
+    for(i in 1:length(substitutions)){
+    	if(i %in% extinct[2:length(extinct)]){
+    		substitutions[i] <- NA
+    	}
+    	if(edgetable[i, 2] %in% edgetable[, 1]){
+    		substitutions[i] <- NA
+    	}
+    }
 
 	simtrtable <- edgetable
 
     # Chop off the root:
     simtrtable2 <- simtrtable[2:length(simtrtable[,1]), ]
-    substitutions2 <- lapply(substitutions, function(x) x <- x[2:nrow(x),])
-    substitutions2 <- substitutions2[2:length(substitutions)]
-    allsubs <- substitutions2
     
-    # Remove all non-extant subsitution data:
-    
-    for(i in 1:length(substitutions2)){
-    	#if(i %in% extinct){
-    	#	substitutions2[[i]] <- NA
-    	#}
-    	#if(simtrtable2[i, 2] %in% simtrtable2[, 1]){
-    	#	substitutions2[[i]] <- NA
-    	#}
+    for(i in 1:length(substitutions)){
+    	if(!is.na(substitutions[i])){ substitutions[[i]] <- substitutions[[i]][2:nrow(substitutions[[i]]),] }
     }
-
+    
+    substitutions2 <- substitutions[2:length(substitutions)]
+    
     # Find the number of tips:
     tips <- length(simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])])
-    #print(c(alltips = tips, extinctions = length(extinct)))
+    #print(c(tips = tips, length(simtrtable2[, 2][which( simtrtable2[, 2][(extinct[2:length(extinct)] - 1)] %in% simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])] )]), extinct = length(extinct[2:length(extinct)])))
 
     # Fix the order so the smallest number is the root:
     fixmat <- rbind(c(0:max(simtrtable2[,2])), c(max(simtrtable2[,2]):0))
@@ -331,13 +337,14 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     simtrtabord <- simtrtabord[order(simtrtabord[, 1], decreasing = T), ]
     subsord <- subsord[order(simtrtabord[, 1], decreasing = T)]
     names(subsord) <- simtrtabord[, 2]
+    print(sort(simtrtabord[which(!simtrtabord[, 2] %in% simtrtabord[, 1]), 2]))
+    print(c(tipstot = tips, tipsextant = tips - length(extinct) + 1))
+    print(c(inalignment = length(subsord[which(!is.na(subsord))])))
 
     # Extract the edge object and each branch length vector from the table:
     simtredge <- simtrtabord[, 1:2]
 
     brlentime <- simtrtabord[, 3]
-
-    brlensubs <- simtrtabord[, 4]
 
     timephylo <- reorder.phylo(rtree(tips), "postorder")
 
@@ -374,15 +381,17 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     timephylcut <- drop.fossil(timephylo)
     
     # Now we create the alignment from the substitutions at the tips:
-    print(class(subsord));print(dim(subsord[[1]]))
+    
     alignment <- matrix(sequence, nrow = 1, ncol = seqlen, byrow = T)
     
     for(i in 1:length(subsord)){
-    	if(is.na(subsord[i]) == F){
+    	if(!is.na(subsord[i])){
     		alignment <- rbind(alignment, sequence)
     		for(j in 1:nrow(subsord[[i]])){
     			alignment[nrow(alignment), as.numeric(subsord[[i]][j, 1])] <- subsord[[i]][j, 3]
     		}
+    		rownames(alignment)[nrow(alignment)] <- names(subsord)[i]
+    		#print(paste("Sequence", nrow(alignment), "done!"))
     	}
     }
     print(dim(alignment))
