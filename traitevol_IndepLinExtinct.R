@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.05, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.009, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.05, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.05, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -42,7 +42,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 	spvar <- sprerror^2
 
-	 while(((tips - length(extinct)) * 2) < branchstop){
+	 while(((tips - (length(extinct) - 1)) * 2) < branchstop){
 
 	 	    # Here we are setting constant time step size. Otherwise, use rexp().
 
@@ -65,8 +65,6 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
         	}
         	
-        	tips <- length(edgetable[, 2][which(!edgetable[, 2] %in% edgetable[, 1])])
-
 		    # If interested on the rate of evolution of the trait, we should set D differently, perhaps with dexp().
 
 		    for(i in (1:nrow(edgetable))[if(length(extinct) > 1){ -extinct } else { 1:nrow(edgetable) }]){
@@ -81,13 +79,13 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 					FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + 0.01 + e2)
 
-					FUNmu <- function(x) abs(0.02 * (1 - exp(-b1 * x)) + 0.001 + e1)
+					FUNmu <- function(x) abs(0.1 * (1 - exp(-b1 * x)) + 0.01 + e1)
 
 					if(b2 == 0){
 						FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + meanspr + e2)
 					}
 					if(b1 == 0){
-						FUNmu <- function(x) abs(0.02 * (1 - exp(-b1 * x)) + meanmu + e1)
+						FUNmu <- function(x) abs(0.1 * (1 - exp(-b1 * x)) + meanmu + e1)
 					}
 
 					if(direct == F){
@@ -130,7 +128,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						if(extevent == 1){
 
-							# An extinction event occurs and a time step is added:
+							# An extinction event occurs:
 
 							extinct <- append(extinct, i)
 
@@ -179,23 +177,6 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 							
 							}
 
-							# Finally we add the time period:
-							edgetable[i, 3] <- edgetable[i, 3] + dt
-
-							# And the trait or mu and spr must evolve:
-							if(direct == F){
-
-								edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))
-
-							} else {
-
-								propevol <- rnorm(1, 1, 0.05)
-
-								edgetable[i, 4] <- edgetable[i, 4] * propevol
-
-								edgetable[i, 5] <- edgetable[i, 5] * propevol
-
-							}
 
 						}
 						
@@ -204,13 +185,13 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						if(specevent == 1){
 							#print("speciation!")
 
-							# A speciation event occurs and a time step is NOT added:
+							# A speciation event occurs and a time step is added:
 
 							if(direct == F){
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), 0, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), 0, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
 
 						   	} else {
 
@@ -228,8 +209,26 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						   	
 						   	substitutions <- append(substitutions, substitutions[length(substitutions)])
 
+						} else {
+							
+							# If no speciation occurred, we still add a time period:
+							edgetable[i, 3] <- edgetable[i, 3] + dt
+
+							# And the trait or mu and spr must evolve:
+							if(direct == F){
+
+								edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))
+
+							} else {
+
+								propevol <- rnorm(1, 1, 0.05)
+
+								edgetable[i, 4] <- edgetable[i, 4] * propevol
+
+								edgetable[i, 5] <- edgetable[i, 5] * propevol
+
+							}
 						}
-						
 						
 
 					} else {
@@ -255,21 +254,20 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 					}
 
 		    	}
-
+		    	
+        	tips <- length(edgetable[, 2][which(!edgetable[, 2] %in% edgetable[, 1])])
 
 		    }
 
 	}
-
 
 	rownames(edgetable) <- NULL
 
     colnames(edgetable) <- NULL
 
     #print(time)
-    #print(c(extantnodesandtips = length((1:nrow(edgetable))[-extinct]), allnodesandtips = length(1:nrow(edgetable))))
-    #print(c(alltips = tips, extinctions = length(extinct)))
-        
+    print(c(tips = tips, extinct = length(extinct) - 1))
+    
 	### The following section takes the object edgetable and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
 
     # Remove all non-extant subsitutions data:
@@ -277,7 +275,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     allsubs <- substitutions
     
     for(i in 1:length(substitutions)){
-    	if(i %in% extinct[2:length(extinct)]){
+    	if(i %in% extinct){
     		substitutions[i] <- NA
     	}
     	if(edgetable[i, 2] %in% edgetable[, 1]){
@@ -296,9 +294,14 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     
     substitutions2 <- substitutions[2:length(substitutions)]
     
+    # Create indexing vectors for both the edge object and the extinct taxa:
+    
+    simtrtable2 <- cbind(simtrtable2, 1:nrow(simtrtable2))
+    
+	extinct <- cbind(extinct[2:length(extinct)], simtrtable2[, ncol(simtrtable2)][extinct[2:length(extinct)]])
+    
     # Find the number of tips:
     tips <- length(simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])])
-    #print(c(tips = tips, length(simtrtable2[, 2][which( simtrtable2[, 2][(extinct[2:length(extinct)] - 1)] %in% simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])] )]), extinct = length(extinct[2:length(extinct)])))
 
     # Fix the order so the smallest number is the root:
     fixmat <- rbind(c(0:max(simtrtable2[,2])), c(max(simtrtable2[,2]):0))
@@ -311,7 +314,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     # Order the branches so the edge object and substitutions are "postorder":
     simtrtabord <- simtrtable2[order(simtrtable2[,1], decreasing = T), ]
-    subsord <- substitutions2[order(simtrtable2[,1], decreasing = T)]
+    subsord <- substitutions2[simtrtable2[, ncol(simtrtable2)]]
+    
     
     # Add one to all values to avoid having a zero:
     simtrtabord[, 1] <- simtrtabord[, 1] + 1
@@ -334,13 +338,16 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     }
 
     # Order the branches so the edge and substitutions objects are "postorder" again:
+    simtrtabord <- cbind(simtrtabord, 1:nrow(simtrtabord))
+    extinct <- cbind(extinct, simtrtabord[, ncol(simtrtabord)][which(simtrtabord[, ncol(simtrtabord) - 1] %in% extinct[, ncol(extinct)])])
     simtrtabord <- simtrtabord[order(simtrtabord[, 1], decreasing = T), ]
-    subsord <- subsord[order(simtrtabord[, 1], decreasing = T)]
+    subsord <- subsord[simtrtabord[, ncol(simtrtabord)]]
     names(subsord) <- simtrtabord[, 2]
-    print(sort(simtrtabord[which(!simtrtabord[, 2] %in% simtrtabord[, 1]), 2]))
-    print(c(tipstot = tips, tipsextant = tips - length(extinct) + 1))
-    print(c(inalignment = length(subsord[which(!is.na(subsord))])))
-
+    
+    extinct <- cbind(extinct, simtrtabord[, 2][which(simtrtabord[, ncol(simtrtabord)] %in% extinct[, ncol(extinct)])]) # After this, the last column of extinct should be the extinct tips' node labels:
+    
+    # Remove all non-extant subsitutions data:
+    
     # Extract the edge object and each branch length vector from the table:
     simtredge <- simtrtabord[, 1:2]
 
@@ -352,7 +359,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     timephylo$edge.length <- simtrtabord[, 3]
     
-    timephylo$tip.label <- 1:tips
+    timephylo$tip.label <- unlist(strsplit(timephylo$tip.label, "t"))[seq(from = 2, to = tips * 2, by = 2)]
 
     timephylo <- read.tree(text = write.tree(timephylo))
 
@@ -394,8 +401,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     		#print(paste("Sequence", nrow(alignment), "done!"))
     	}
     }
-    print(dim(alignment))
+    
     alignment <- as.DNAbin(alignment[2:nrow(alignment),])
+    print(dim(alignment))
     
     # Finally the function returns a list with the following objects: The complete chronogram, the extant chronogram, and the DNA sequence alignment.
 
