@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.05, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.05, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.05, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -113,14 +113,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 		    			mu.new <- rand[1]
 
 		    		}
-
-		    		# The following is the total probability of an event occurring, which includes twice the equation for the rate of an event occurring.
-
-		    		totalP <- ((spr.new + (mu.new * seqlen) + Pext) * dt) * exp(-((spr.new + (mu.new * seqlen) + Pext) * dt))
-
-						# The following condition determines whether and event occurs.
-
-		    		if(runif(1) <= totalP){
+		    		
+		    		event <- 0
 		    			
 		    			### Define probability of events and execute them.
 
@@ -131,6 +125,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 							# An extinction event occurs:
 
 							extinct <- append(extinct, i)
+							
+							event <- 1
 
 							if(length(extinct) > length(!(edgetable[, 2] %in% edgetable[, 1]))) {
 
@@ -152,12 +148,18 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						}
 						
-						subsevent <- rbinom(seqlen, 1, (mu.new / (1 - Pext)))
+						subP <- (mu.new / (1 - Pext))
+						
+						if(subP < 0.001) subP <- 0.001
+						
+						subsevent <- rbinom(seqlen, 1, subP)
 						
 						if(sum(subsevent) >= 1){
 							#print("substitution!")
 
 							# A substitution event occurs. To do this, we bind a row to the substitutions matrix; the columns of this matrix are a site, an initial base, and an end base. If a substitution has already been done in a site, the end base is replaced according to the most recent base.
+							
+							event <- 1
 							
 							substsite <- which(subsevent == 1)
 							
@@ -186,6 +188,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 							#print("speciation!")
 
 							# A speciation event occurs and a time step is added:
+							
+							event <- 1
 
 							if(direct == F){
 
@@ -197,9 +201,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						   		propevol <- rnorm(1, 1, 0.05)
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), 0, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), 0, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
 
 						   	}
 
@@ -231,7 +235,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						}
 						
 
-					} else {
+					if(event <- 0){
 
 						# Even if no event occurs, we must add a time step:
 						edgetable[i, 3] <- edgetable[i, 3] + dt
@@ -252,6 +256,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						}
 
 					}
+					
+					event <- 0
 
 		    	}
 		    	
@@ -265,7 +271,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     colnames(edgetable) <- NULL
 
-    #print(time)
+    print(time)
     print(c(tips = tips, extinct = length(extinct) - 1))
     
 	### The following section takes the object edgetable and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
@@ -274,14 +280,14 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     
     allsubs <- substitutions
     
-    for(i in 1:length(substitutions)){
-    	if(i %in% extinct){
-    		substitutions[i] <- NA
-    	}
-    	if(edgetable[i, 2] %in% edgetable[, 1]){
-    		substitutions[i] <- NA
-    	}
-    }
+    #for(i in 1:length(substitutions)){
+    #	if(i %in% extinct){
+    #		substitutions[i] <- NA
+    #	}
+    #	if(edgetable[i, 2] %in% edgetable[, 1]){
+    #		substitutions[i] <- NA
+    #	}
+    #}
 
 	simtrtable <- edgetable
 
@@ -316,7 +322,6 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     simtrtabord <- simtrtable2[order(simtrtable2[,1], decreasing = T), ]
     subsord <- substitutions2[simtrtable2[, ncol(simtrtable2)]]
     
-    
     # Add one to all values to avoid having a zero:
     simtrtabord[, 1] <- simtrtabord[, 1] + 1
 
@@ -339,7 +344,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     # Order the branches so the edge and substitutions objects are "postorder" again:
     simtrtabord <- cbind(simtrtabord, 1:nrow(simtrtabord))
-    extinct <- cbind(extinct, simtrtabord[, ncol(simtrtabord)][which(simtrtabord[, ncol(simtrtabord) - 1] %in% extinct[, ncol(extinct)])])
+    extinct <- cbind(extinct, simtrtabord[, ncol(simtrtabord)][which(simtrtabord[, (ncol(simtrtabord) - 1)] %in% extinct[, ncol(extinct)])])
     simtrtabord <- simtrtabord[order(simtrtabord[, 1], decreasing = T), ]
     subsord <- subsord[simtrtabord[, ncol(simtrtabord)]]
     names(subsord) <- simtrtabord[, 2]
@@ -347,6 +352,15 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     extinct <- cbind(extinct, simtrtabord[, 2][which(simtrtabord[, ncol(simtrtabord)] %in% extinct[, ncol(extinct)])]) # After this, the last column of extinct should be the extinct tips' node labels:
     
     # Remove all non-extant subsitutions data:
+    
+    for(i in 1:length(subsord)){
+    	#if(i %in% extinct[, ncol(extinct)]){
+    	#	subsord[i] <- NA
+    	#}
+    	if(simtrtabord[i, 2] %in% simtrtabord[, 1]){
+    		subsord[i] <- NA
+    	}
+    }
     
     # Extract the edge object and each branch length vector from the table:
     simtredge <- simtrtabord[, 1:2]
