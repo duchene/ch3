@@ -42,7 +42,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 	spvar <- sprerror^2
 
-	 while(((tips - (length(extinct) - 1)) * 2) < branchstop){
+	while(((tips - (length(extinct) - 1)) * 2) < branchstop){
 
 	 	    # Here we are setting constant time step size. Otherwise, use rexp().
 
@@ -79,13 +79,13 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 					FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + 0.01 + e2)
 
-					FUNmu <- function(x) abs(0.1 * (1 - exp(-b1 * x)) + 0.01 + e1)
+					FUNmu <- function(x) abs(0.01 * (1 - exp(-b1 * x)) + 0.01 + e1)
 
 					if(b2 == 0){
 						FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + meanspr + e2)
 					}
 					if(b1 == 0){
-						FUNmu <- function(x) abs(0.1 * (1 - exp(-b1 * x)) + meanmu + e1)
+						FUNmu <- function(x) abs(0.01 * (1 - exp(-b1 * x)) + meanmu + e1)
 					}
 
 					if(direct == F){
@@ -161,20 +161,22 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 							
 							event <- 1
 							
-							substsite <- which(subsevent == 1)
+							for(j in 1:length(subsevent)){
 							
-							for(j in substsite){
+								if(subsevent[j] == 1){
 							
-								if(j %in% substitutions[[i]][, 1]){
+									if(j %in% substitutions[[i]][, 1]){
 								
-									substitutions[[i]][which(substitutions[[i]][, 1] == j), 2] <- substitutions[[i]][which(substitutions[[i]][, 1] == j), 3]
+										substitutions[[i]][which(substitutions[[i]][, 1] == j), 2] <- substitutions[[i]][which(substitutions[[i]][, 1] == j), 3]
 								
-									substitutions[[i]][which(substitutions[[i]][, 1] == j), 3] <- rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, substitutions[[i]][which(substitutions[[i]][, 1] == j), 2]]) == 1)]
+										substitutions[[i]][which(substitutions[[i]][, 1] == j), 3] <- rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, substitutions[[i]][which(substitutions[[i]][, 1] == j), 2]]) == 1)]
 							
-								} else {
+									} else {
 							
-									substitutions[[i]] <- rbind(substitutions[[i]], c(j, sequence[j], rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, sequence[j]]) == 1)]))
+										substitutions[[i]] <- rbind(substitutions[[i]], c(j, sequence[j], rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, sequence[j]]) == 1)]))
 							
+									}
+								
 								}
 							
 							}
@@ -209,9 +211,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						   	edgetable <- rbind(edgetable, newbr1, newbr2)
 						   	
-						   	substitutions <- append(substitutions, substitutions[length(substitutions)])
+						   	substitutions <- append(substitutions, substitutions[i])
 						   	
-						   	substitutions <- append(substitutions, substitutions[length(substitutions)])
+						   	substitutions <- append(substitutions, substitutions[i])
 
 						} else {
 							
@@ -272,7 +274,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     colnames(edgetable) <- NULL
 
     print(time)
-    print(c(tips = tips, extinct = length(extinct) - 1))
+    #print(c(tips = tips, extinct = length(extinct) - 1))
     
 	### The following section takes the object edgetable and spits out two phylogenies, one with branch lengths in terms of time, with any desired total age specified with the argument age, and the other in terms of substitutions.
 
@@ -287,7 +289,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     
     substitutions2 <- substitutions[2:length(substitutions)]
     
-    print(simtrtable2[1:5, ])
+    #print(simtrtable2[1:5, ])
     
     # Create the sequences for all nodes and tips
     
@@ -301,9 +303,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     }
     print(dim(alignment))
     simtrtable2 <- cbind(as.data.frame(simtrtable2), as.data.frame(alignment[2:nrow(alignment), ]))
-    print(class(simtrtable2))
-    print(dim(simtrtable2))
-    print(simtrtable2[1:5, 1:10])
+    #print(class(simtrtable2))
+    #print(dim(simtrtable2))
+    #print(simtrtable2[1:5, 1:10])
     
     # Find the number of tips:
     tips <- length(simtrtable2[, 2][which(!simtrtable2[, 2] %in% simtrtable2[, 1])])
@@ -377,7 +379,15 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 		
 		brtimes <- branching.times(timephylo)
 		
-		extantedgelen <- max(timephylo$edge.length[as.vector(which(timephylo$edge[,1] == as.numeric(names(which(brtimes == minbrage)))))])
+		youngbrs <- as.numeric(names(brtimes[which(brtimes == minbrage)]))
+		
+		#print(youngbrs)
+		
+		extantedgelen <- 0
+		for(i in 1:length(youngbrs)){
+		tempextedgelen <- max(timephylo$edge.length[as.vector(which(timephylo$edge[,1] == youngbrs[i] ))])
+		extantedgelen <- max(extantedgelen, tempextedgelen)
+		}
 		addedval <- abs(min(branching.times(timephylo))) + extantedgelen
 		for(i in 1:length(timephylo$edge.length)){
 			brlen[i] <- (age / (max(branching.times(timephylo)) + addedval)) * timephylo$edge.length[i]
@@ -400,7 +410,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     	
     	rownames(alignalltips) <- simtrtabord[, 2][which(simtrtabord[, 2] %in% 1:tips)]
     	
-    	#alignextant <- 
+    	alignextant <- alignalltips[timephylcut$tip.label,]
     
     } else {
     
@@ -412,13 +422,13 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     	
     	rownames(alignalltips) <- simtrtabord[, 2][which(simtrtabord[, 2] %in% 1:tips)]
     	
-    	#alignextant <-
+    	alignextant <- alignalltips[timephylcut$tip.label,]
     
     }
     
     # Finally the function returns a list with the following objects: The complete chronogram, the extant chronogram, and the DNA sequence alignment.
 
-    return(list(timephyloFULL = timephylo, timephylo = timephylcut, nodesDNA = alignallnodes, alltipsDNA = alignalltips))
+    return(list(timephyloFULL = timephylo, timephylo = timephylcut, alltipsDNA = alignalltips, extantDNA = alignextant))
 
 
 }
