@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000099, meanmu = 0.05, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000095, meanmu = 0.0035, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -79,7 +79,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 					FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + 0.01 + e2)
 
-					FUNmu <- function(x) abs(0.01 * (1 - exp(-b1 * x)) + 0.01 + e1)
+					FUNmu <- function(x) abs(0.01 * (1 - exp(-b1 * x)) + 0.0001 + e1)
 
 					if(b2 == 0){
 						FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + meanspr + e2)
@@ -93,6 +93,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						# The following makes sure that trait values do not become lower than roughly 2.
 
 						if(edgetable[i, 4] < 2) edgetable[i, 4] <- 2 + rnorm(1, 0, sqrt(2 * D * dt))
+						if(edgetable[i, 4] > 100) edgetable[i, 4] <- 100 + rnorm(1, 0, sqrt(2 * D * dt))
 
 		    			spr.new <- FUNspr(edgetable[i, 4])
 
@@ -301,7 +302,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     			alignment[nrow(alignment), as.numeric(substitutions2[[i]][j, 1])] <- substitutions2[[i]][j, 3]
     	}
     }
-    print(dim(alignment))
+    #print(dim(alignment))
     simtrtable2 <- cbind(as.data.frame(simtrtable2), as.data.frame(alignment[2:nrow(alignment), ]))
     #print(class(simtrtable2))
     #print(dim(simtrtable2))
