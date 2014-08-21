@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000095, meanmu = 0.0035, meanspr = 0.1, q = matrix(rep(0.1, 16), 4, 4), age = 50){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.02, Pext = 0.01, Dsd = 0.001, molerror = 0.001, sprerror = 0.01, direct = F, covariance = 0.0000095, meanmu = 0.0135, meanspr = 0.1, q = 0, age = 0){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -20,6 +20,10 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 		edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5)
 
+	}
+
+	if(q == 0){
+	     q <- matrix(c(-7.0921, 1.3472, 4.8145, 0.9304, 1.3472, -8.155, 1.2491, 5.5587, 4.8145, 1.2491, -7.0636, 1, 0.9304, 5.5587, 1, -7.4891), 4, 4, byrow = T) # From placental mammals. In Murphy et al. 2001 in Science
 	}
 
     substitutions <- list(matrix(c(0,0,0), 1, 3))
@@ -79,7 +83,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 					FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + 0.01 + e2)
 
-					FUNmu <- function(x) abs(0.01 * (1 - exp(-b1 * x)) + 0.0001 + e1)
+					FUNmu <- function(x) abs(0.01 * (1 - exp(-b1 * x)) + 0.01 + e1)
 
 					if(b2 == 0){
 						FUNspr <- function(x) abs(0.1 * (1 - exp(-b2 * x)) + meanspr + e2)
@@ -303,7 +307,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
     	}
     }
     #print(dim(alignment))
-    simtrtable2 <- cbind(as.data.frame(simtrtable2), as.data.frame(alignment[2:nrow(alignment), ]))
+    simtrtable2 <- suppressWarnings(cbind(as.data.frame(simtrtable2), as.data.frame(alignment[2:nrow(alignment), ])))
     #print(class(simtrtable2))
     #print(dim(simtrtable2))
     #print(simtrtable2[1:5, 1:10])
@@ -364,6 +368,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     # Now we modify the age of the phylogeny to be the one given by the argument age.
 
+    if(age > 0){
+
 	if(is.ultrametric(timephylo) == TRUE){
 
 		brlen <- vector()
@@ -394,6 +400,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 			brlen[i] <- (age / (max(branching.times(timephylo)) + addedval)) * timephylo$edge.length[i]
 		}
 		timephylo$edge.length <- brlen
+
+	}
 
 	}
 
