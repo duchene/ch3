@@ -86,10 +86,10 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 					FUNmu <- function(x) abs(0.015 * (1 - exp(-b1 * x)) + 0.005 + e1)
 
 					if(b2 == 0){
-						FUNspr <- function(x) abs(0.25 * (1 - exp(-b2 * x)) + meanspr + (e2 / 100))
+						FUNspr <- function(x) abs(0.25 * (1 - exp(-b2 * x)) + meanspr + e2)
 					}
 					if(b1 == 0){
-						FUNmu <- function(x) abs(0.015 * (1 - exp(-b1 * x)) + meanmu + (e1 / 100))
+						FUNmu <- function(x) abs(0.015 * (1 - exp(-b1 * x)) + meanmu + e1)
 					}
 
 					if(direct == F){
@@ -104,6 +104,10 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 		    			mu.new <- FUNmu(edgetable[i, 4])
 
 		    		} else {
+
+		    			if(edgetable[i, 4] < 0.001) edgetable[i, 4] <- 0.001 + rnorm(1, 0, 0.0001)
+
+		    			if(edgetable[i, 5] < 0.01) edgetable[i, 5] <- 0.01 + rnorm(1, 0, 0.001)
 
 		    			rand <- mvrnorm(1, c(edgetable[i, 4], edgetable[i, 5]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
 
@@ -150,6 +154,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						}
 						
 						subP <- (mu.new / (1 - Pext))
+						
+						if(subP < 0.001) subP <- 0.001
 						
 						subsevent <- rbinom(seqlen, 1, subP)
 						
@@ -199,14 +205,12 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
 
 						   	} else {
-							        
-								# From here onwards, we need both speciation and substitution to evolve together, so we create a propevol value that allows them to evolve by the same proportion every time.
 
-								propevol <- rnorm(1, 0, 0.05)
+						   		propevol <- rnorm(1, 1, 0.05)
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, edgetable[i, 4] + (meanmu * propevol), edgetable[i, 5] + (meanspr * propevol))
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, edgetable[i, 4] + (meanmu * propevol), edgetable[i, 5] + (meanspr * propevol))
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, edgetable[i, 4] * propevol, edgetable[i, 5] * propevol)
 
 						   	}
 
@@ -228,11 +232,11 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 							} else {
 
-								propevol <- rnorm(1, 0, 0.05)
+								propevol <- rnorm(1, 1, 0.05)
 
-								edgetable[i, 4] <- edgetable[i, 4] + (meanmu * propevol)
+								edgetable[i, 4] <- edgetable[i, 4] * propevol
 
-								edgetable[i, 5] <- edgetable[i, 5] + (meanspr * propevol)
+								edgetable[i, 5] <- edgetable[i, 5] * propevol
 
 							}
 						}
@@ -250,11 +254,11 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						} else {
 
-							propevol <- rnorm(1, 0, 0.05)
+							propevol <- rnorm(1, 1, 0.05)
 
-							edgetable[i, 4] <- edgetable[i, 4] + (meanmu * propevol)
+							edgetable[i, 4] <- edgetable[i, 4] * propevol
 
-							edgetable[i, 5] <- edgetable[i, 5] + (meanspr * propevol)
+							edgetable[i, 5] <- edgetable[i, 5] * propevol
 
 						}
 
