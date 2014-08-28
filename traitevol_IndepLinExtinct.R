@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.01, regcoefspr = 0.01, Pext = 0.01, Dsd = 0.001, molerror = 0.0005, sprerror = 0.05, direct = F, covariance = 24e-6, meanmu = 0.01, meanspr = 0.1, q = 0, age = 0){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.58, regcoefspr = 1.15, Pext = 0.01, D = 1, molerror = 0.0005, sprerror = 0.05, direct = F, covariance = 24.9e-6, meanmu = -4.6, meanspr = -2.3, q = 0, age = 0){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -73,106 +73,138 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 		    for(i in (1:nrow(edgetable))[if(length(extinct) > 1){ -extinct } else { 1:nrow(edgetable) }]){
 
-		    	D <- rexp(1, Dsd)
-
 		    	if(!(edgetable[i, 2] %in% edgetable[, 1])){ # Grab a tip lineage
 
 					e1 <- rnorm(1, 0, molerror)
 
 					e2 <- rnorm(1, 0, sprerror)
 
-					FUNspr <- function(x) abs(0.25 * (1 - exp(-b2 * x)) + 0.01 + e2)
+					FUNspr <- function(x) b2 * log(x) - 6.9 + e2
 
-					FUNmu <- function(x) abs(0.015 * (1 - exp(-b1 * x)) + 0.005 + e1)
+					FUNmu <- function(x) b1 * log(x) - 6.9 + e1
 
 					if(b2 == 0){
-						FUNspr <- function(x) abs(0.25 * (1 - exp(-b2 * x)) + meanspr + (e2 / 100))
+						FUNspr <- function(x) b2 * log(x) + meanspr + (e2 / 100)
 					}
 					if(b1 == 0){
-						FUNmu <- function(x) abs(0.015 * (1 - exp(-b1 * x)) + meanmu + (e1 / 100))
+						FUNmu <- function(x) b1 * log(x) + meanmu + (e1 / 100)
 					}
 
 					if(direct == F){
 
 						# The following makes sure that trait values do not become lower than roughly 2.
 
-						if(edgetable[i, 4] < 2) edgetable[i, 4] <- 2 + rnorm(1, 0, sqrt(2 * D * dt))
-						if(edgetable[i, 4] > 100) edgetable[i, 4] <- 100 + rnorm(1, 0, sqrt(2 * D * dt))
+						if(edgetable[i, 4] < 2) edgetable[i, 4] <- 2 + rnorm(1, 0, (D * dt))
+						if(edgetable[i, 4] > 100) edgetable[i, 4] <- 100 + rnorm(1, 0, (D * dt))
 
-		    			spr.new <- FUNspr(edgetable[i, 4])
+		    			spr.new0 <- suppressWarnings(FUNspr(edgetable[i, 4]))
 
-		    			mu.new <- FUNmu(edgetable[i, 4])
+		    			mu.new0 <- suppressWarnings(FUNmu(edgetable[i, 4]))
+		    			
+		    			spr.new <- exp(spr.new0)
+		    			
+		    			mu.new <- exp(mu.new0)
+		    			
+		    			#print(edgetable[i, 4])
+		    			
+		    			#print(c(spr.new0, spr.new, mu.new0, mu.new))
+
 
 		    		} else {
 
 		    			rand <- mvrnorm(1, c(edgetable[i, 4], edgetable[i, 5]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
 
-		    			while(any(rand < 0)) rand <- mvrnorm(1, c(edgetable[i, 4], edgetable[i, 5]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
+		    			if(rand[1] > -4.19) rand[1] <- -4.19
+		    			
+		    			if(rand[2] > -1.6) rand[2] <- -1.6
 
-		    			spr.new <- rand[2]
+		    			spr.new <- exp(rand[2])
 
-		    			mu.new <- rand[1]
+		    			mu.new <- exp(rand[1])
+		    			
+		    			#print(c(spr.new, mu.new))
 
 		    		}
 		    		
 		    		event <- 0
 		    			
-		    			### Define probability of events and execute them.
+		    		### The following is the total probability of each event occurring.
 
-		    			extevent <- rbinom(1, 1, Pext)
+	    			totalP <- ((spr.new + mu.new + Pext + (spr.new * mu.new)) * dt) * exp(-((spr.new + mu.new + Pext + (spr.new * mu.new)) * dt))
+	    			
+	    			#print(totalP)
+	    			
+	    			# The following determines whether an event occurs.
+	    			
+	    			if(runif(1) <= totalP){
+	    			
+	    				specP <- spr.new / (spr.new + (mu.new * seqlen) + Pext + (spr.new * (mu.new * seqlen)))
+		    				
+		    			extP <- Pext / (spr.new + (mu.new * seqlen) + Pext + (spr.new * (mu.new * seqlen)))
+		    				
+		    			muP <- (mu.new * seqlen) / (spr.new + (mu.new * seqlen) + Pext + (spr.new * (mu.new * seqlen)))
+		    			
+		    			muspP <- (spr.new * (mu.new * seqlen)) / (spr.new + (mu.new * seqlen) + Pext + (spr.new * (mu.new * seqlen)))
 
-						if(extevent == 1){
+		    			# The following segment determines which event occurs.
+		    				
+		    			event <- which(rmultinom(1, 1, c(extP, muP, specP, muspP)) == 1)
+		    			
+		    		} else {
+		    			
+		    			event <- 0
+		    		
+		    		}
 
-							# An extinction event occurs:
+					if(event == 1){
 
-							extinct <- append(extinct, i)
-							
-							event <- 1
+						# An extinction event occurs:
 
-							if(length(extinct) > length(!(edgetable[, 2] %in% edgetable[, 1]))) {
+						extinct <- append(extinct, i)
 
-								if(direct == F){
+						if(length(extinct) > length(!(edgetable[, 2] %in% edgetable[, 1]))) {
 
-									edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1; print("A total extinction happened!")
+							if(direct == F){
 
-								} else {
+								edgetable <- matrix(data = c(0, 1, 0, traitstart), nrow = 1, ncol = 4); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1; print("A total extinction happened!")
 
-									edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1; print("A total extinction happened!")
+							} else {
 
-								}
+								edgetable <- matrix(data = c(0, 1, 0, meanmu, meanspr), nrow = 1, ncol = 5); extinct <- 1 ; time <- 1; substitutions <- list(matrix(c(0,0,0), 1, 3)); tips <- 1; print("A total extinction happened!")
 
 							}
 
-							#print(paste("extinction!"))
-							
-							next
-
 						}
-						
-						subP <- (mu.new / (1 - Pext))
-						
-						subsevent <- rbinom(seqlen, 1, subP)
-						
-						if(sum(subsevent) >= 1){
-							#print("substitution!")
 
-							# A substitution event occurs. To do this, we bind a row to the substitutions matrix; the columns of this matrix are a site, an initial base, and an end base. If a substitution has already been done in a site, the end base is replaced according to the most recent base.
+						#print(paste("extinction!"))
 							
-							event <- 1
+						next
+
+					}
+						
+					if(event == 2 | event == 4){
+						
+					subsevent <- rbinom(seqlen, 1, mu.new)
+						
+					if(sum(subsevent) >= 1){
+						
+						#print(paste("substitution!", sum(subsevent)))
+
+						# A substitution event occurs. To do this, we bind a row to the substitutions matrix; the columns of this matrix are a site, an initial base, and an end base. If a substitution has already been done in a site, the end base is replaced according to the most recent base.
 							
-							for(j in 1:length(subsevent)){
+						for(j in 1:length(subsevent)){
 							
-								if(subsevent[j] == 1){
+							if(subsevent[j] == 1){
 							
-									if(j %in% substitutions[[i]][, 1]){
+								if(j %in% substitutions[[i]][, 1]){
 								
-										substitutions[[i]][which(substitutions[[i]][, 1] == j), 2] <- substitutions[[i]][which(substitutions[[i]][, 1] == j), 3]
+									substitutions[[i]][which(substitutions[[i]][, 1] == j), 2] <- substitutions[[i]][which(substitutions[[i]][, 1] == j), 3]
 								
-										substitutions[[i]][which(substitutions[[i]][, 1] == j), 3] <- rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, substitutions[[i]][which(substitutions[[i]][, 1] == j), 2]]) == 1)]
+									substitutions[[i]][which(substitutions[[i]][, 1] == j), 3] <- rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, substitutions[[i]][which(substitutions[[i]][, 1] == j), 2]]) == 1)]
 							
-									} else {
+								} else {
 							
-										substitutions[[i]] <- rbind(substitutions[[i]], c(j, sequence[j], rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, sequence[j]]) == 1)]))
+									substitutions[[i]] <- rbind(substitutions[[i]], c(j, sequence[j], rownames(subsPmat)[which(rmultinom(1, 1, subsPmat[, sequence[j]]) == 1)]))
 							
 									}
 								
@@ -183,20 +215,18 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						}
 						
-						specevent <- rbinom(1, 1, (spr.new / (1 - Pext)))
+						}
 						
-						if(specevent == 1){
+						if(event == 3 | event == 4){
 							#print("speciation!")
 
 							# A speciation event occurs and a time step is added:
-							
-							event <- 1
 
 							if(direct == F){
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, (rt + edgetable[i, 4] + rnorm(1, 0, (D * dt))))
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, (rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))))
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, (rt + edgetable[i, 4] + rnorm(1, 0, (D * dt))))
 
 						   	} else {
 							        
@@ -215,16 +245,21 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						   	substitutions <- append(substitutions, substitutions[i])
 						   	
 						   	substitutions <- append(substitutions, substitutions[i])
+						   	#print(dim(substitutions[[i]]))
 
-						} else {
+						} 
+						
+						
+						# If no speciation occurred, but a substitution did, we still add a time period:
+						
+						if(event == 2){
 							
-							# If no speciation occurred, we still add a time period:
 							edgetable[i, 3] <- edgetable[i, 3] + dt
 
 							# And the trait or mu and spr must evolve:
 							if(direct == F){
 
-								edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))
+								edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, (D * dt))
 
 							} else {
 
@@ -238,7 +273,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						}
 						
 
-					if(event <- 0){
+					if(event == 0){
 
 						# Even if no event occurs, we must add a time step:
 						edgetable[i, 3] <- edgetable[i, 3] + dt
@@ -246,7 +281,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						# And the trait or mu and spr must evolve:
 						if(direct == F){
 
-							edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, sqrt(2 * D * dt))
+							edgetable[i, 4] <- rt + edgetable[i, 4] + rnorm(1, 0, (D * dt))
 
 						} else {
 
@@ -259,8 +294,6 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 						}
 
 					}
-					
-					event <- 0
 
 		    	}
 		    	
@@ -283,8 +316,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
     # Chop off the root:
     simtrtable2 <- simtrtable[2:nrow(simtrtable), ]
-    
     for(i in 1:length(substitutions)){
+    	#print(dim(substitutions[[i]]))
     	substitutions[[i]] <- substitutions[[i]][2:nrow(substitutions[[i]]),]
     }
     
