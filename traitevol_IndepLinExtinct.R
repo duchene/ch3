@@ -8,7 +8,7 @@ require(Matrix)
 # Arguments:	stepsize is the size of each time step in time (it influences the probability of an event of speciation, exinction, or substitution occurring).	branchstop is number of branches desired and stops the simulation. 	seqlen is the length of the genetic sequence to be generated.	traitstart is the initial value of the trait.			trait.r is the rate of change of the trait, which is adjusted when a trend is desired. 		FUNspr and FUNmu are the functions that define the relationship between the trait and the probability of bifurcation and substitution respectively.	Pext is the constant background probability of extinction.	D is the variance of trait evolution, which is taken as being constant.	molerror and sprerror are the error to be introduced to each of speciation and mutation probability at each step.
 
 
-tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.58, regcoefspr = 1.15, Pext = 0.01, D = 1, molerror = 0.000005, sprerror = 0.0005, direct = F, covariance = 24.9e-10, meanmu = -4.6, meanspr = -2.3, q = 0, age = 0){
+tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart = 50, trait.r = 0, regcoefmu = 0.58, regcoefspr = 1.15, Pext = 0.01, D = 1, molerror = 0.0005, sprerror = 0.05, direct = F, covariance = 25e-6, meanmu = -4.6, meanspr = -2.3, q = 0, age = 0){
 
 # The following is a matrix where the columns are: the parent node, the daughter node, the branch length in time, and etiher the trait value or the means for mu and spr.
 
@@ -84,10 +84,10 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 					FUNmu <- function(x) b1 * log(x) - 6.9 + e1
 
 					if(b2 == 0){
-						FUNspr <- function(x) b2 * log(x) + meanspr + (e2 / 100)
+						FUNspr <- function(x) meanspr #+ (e2 / 10)
 					}
 					if(b1 == 0){
-						FUNmu <- function(x) b1 * log(x) + meanmu + (e1 / 100)
+						FUNmu <- function(x) meanmu #+ (e1 / 10)
 					}
 
 					if(direct == F){
