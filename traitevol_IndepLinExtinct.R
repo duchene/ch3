@@ -48,6 +48,8 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 	spvar <- sprerror^2
 
+	if(b1 == 0) subsevents <- rbinom(seqlen, 1, exp(meanmu))
+
 	while(((tips - (length(extinct) - 1)) * 2) < branchstop){
 
 	 	    # Here we are setting constant time step size. Otherwise, use rexp().
@@ -125,9 +127,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 		    			rand <- mvrnorm(1, c(edgetable[i, 4], edgetable[i, 5]), matrix(c(muvar, covariance, covariance, spvar), 2, 2))
 
-		    			if(rand[1] > -4.19) rand[1] <- -3.68
+		    			if(rand[1] > -3.68) rand[1] <- -3.68
 		    			
-		    			if(rand[2] > -1.6) rand[2] <- -0.69
+		    			if(rand[2] > -0.69) rand[2] <- -0.69
 
 		    			spr.new <- exp(rand[2])
 
@@ -194,12 +196,16 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 					}
 						
 					if(event == 2 | event == 4){
-						
-					subsevent <- rbinom(seqlen, 1, mu.new)
-						
+					
+					if(b1 == 0){
+					      subsevent <- sample(subsevents, seqlen)
+					} else {
+					      subsevent <- rbinom(seqlen, 1, mu.new)
+					}
+	
 					if(sum(subsevent) >= 1){
 						
-						#print(paste("substitution!", sum(subsevent)))
+						#print(paste(sum(subsevent), "substitutions on", mu.new, "probability"))
 
 						# A substitution event occurs. To do this, we bind a row to the substitutions matrix; the columns of this matrix are a site, an initial base, and an end base. If a substitution has already been done in a site, the end base is replaced according to the most recent base.
 							
@@ -222,7 +228,6 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 								}
 							
 							}
-
 
 						}
 						
