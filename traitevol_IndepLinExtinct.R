@@ -143,7 +143,7 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 		    			
 		    		### The following is the total probability of each event occurring.
 
-	    			totalP <- ((spr.new + mu.new + Pext + (spr.new * mu.new)) * dt) * exp(-((spr.new + mu.new + Pext + (spr.new * mu.new)) * dt))
+	    			totalP <- ((spr.new + (mu.new * seqlen) + Pext + (spr.new * (mu.new * seqlen))) * dt) * exp(-((spr.new + (mu.new * seqlen) + Pext + (spr.new * (mu.new * seqlen))) * dt))
 	    			
 	    			#print(totalP)
 	    			
