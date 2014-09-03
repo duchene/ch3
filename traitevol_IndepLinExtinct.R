@@ -240,19 +240,15 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 							if(direct == F){
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, (rt + edgetable[i, 4] + rnorm(1, 0, (D * dt))))
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, (rt + edgetable[i, 4]))
 
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, (rt + edgetable[i, 4] + rnorm(1, 0, (D * dt))))
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, (rt + edgetable[i, 4]))
 
 						   	} else {
-							        
-								# From here onwards, we need both speciation and substitution to evolve together, so we create a propevol value that allows them to evolve by the same proportion every time.
 
-								propevol <- rnorm(1, 0, 0.05)
+						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, mu.new, spr.new)
 
-						   		newbr1 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 1), dt, edgetable[i, 4] + (meanmu * propevol), edgetable[i, 5] + (meanspr * propevol))
-
-						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, edgetable[i, 4] + (meanmu * propevol), edgetable[i, 5] + (meanspr * propevol))
+						   		newbr2 <- c(edgetable[i, 2], (max(edgetable[, 2]) + 2), dt, mu.new, spr.new)
 
 						   	}
 
@@ -279,11 +275,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 							} else {
 
-								propevol <- rnorm(1, 0, 0.05)
+								edgetable[i, 4] <- mu.new
 
-								edgetable[i, 4] <- edgetable[i, 4] + (meanmu * propevol)
-
-								edgetable[i, 5] <- edgetable[i, 5] + (meanspr * propevol)
+								edgetable[i, 5] <- spr.new
 
 							}
 						}
@@ -301,11 +295,9 @@ tr.mu.sp <- function(stepsize = 0.1, branchstop = 200, seqlen = 2000, traitstart
 
 						} else {
 
-							propevol <- rnorm(1, 0, 0.05)
+							edgetable[i, 4] <- mu.new
 
-							edgetable[i, 4] <- edgetable[i, 4] + (meanmu * propevol)
-
-							edgetable[i, 5] <- edgetable[i, 5] + (meanspr * propevol)
+							edgetable[i, 5] <- spr.new
 
 						}
 
